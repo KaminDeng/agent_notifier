@@ -343,3 +343,9 @@ npm run ask:e2e:card
 - `src/apps/codex-live.js`
 - `src/apps/codex-watcher.js`
 - `src/channels/feishu/feishu-interaction-handler.js`
+
+---
+
+## License
+
+[MIT](./LICENSE)
