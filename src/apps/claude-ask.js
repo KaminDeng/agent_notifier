@@ -13,10 +13,10 @@
 const fs = require('fs');
 const path = require('path');
 const Lark = require('@larksuiteoapi/node-sdk');
-const { envConfig } = require('../../lib/env-config');
-const { sessionState } = require('../../lib/session-state');
-const { resolvePtsDevice } = require('../../lib/terminal-inject');
-const { buildMultiSelectCard, parseMarkdownToElements } = require('../../lib/feishu-card-utils');
+const { envConfig } = require('../lib/env-config');
+const { sessionState } = require('../lib/session-state');
+const { resolvePtsDevice } = require('../lib/terminal-inject');
+const { buildMultiSelectCard, parseMarkdownToElements } = require('../lib/feishu-card-utils');
 
 // ── Utility functions ─────────────────────────────────────
 

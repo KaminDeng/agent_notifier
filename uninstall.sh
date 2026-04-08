@@ -110,7 +110,7 @@ if pkill -f "node ${INSTALL_DIR}/src/apps/codex-session-watcher.js" 2>/dev/null;
 fi
 
 # 停止本项目的 pty-relay（限定路径避免误杀）
-if pkill -f "python3 ${INSTALL_DIR}/pty-relay.py" 2>/dev/null; then
+if pkill -f "python3 ${INSTALL_DIR}/bin/pty-relay.py" 2>/dev/null; then
     success "已停止 pty-relay"
 fi
 

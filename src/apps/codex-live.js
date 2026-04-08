@@ -3,9 +3,9 @@
 const fs = require('node:fs');
 const path = require('node:path');
 
-require('../../lib/env-config');
+require('../lib/env-config');
 const { createFeishuClient } = require('../channels/feishu/feishu-client');
-const { sessionState } = require('../../lib/session-state');
+const { sessionState } = require('../lib/session-state');
 const { buildCodexFooter, normalizeTokenUsage } = require('./codex-card-footer');
 
 function parseCaptureConfig(raw = process.env.FEISHU_LIVE_CAPTURE || '') {

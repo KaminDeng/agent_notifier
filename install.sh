@@ -196,7 +196,7 @@ AGENT_FUNCS=$(cat <<'EOF'
 # ── Claude Code PTY 中继（由 claude-notifier 安装脚本注入） ──
 claude() {
     if [[ -z "$TMUX" && -z "$PTY_RELAY_ACTIVE" ]]; then
-        PTY_RELAY_ACTIVE=1 python3 __INSTALL_DIR__/pty-relay.py "$(whence -p claude 2>/dev/null || type -P claude 2>/dev/null || which claude)" "$@"
+        PTY_RELAY_ACTIVE=1 python3 __INSTALL_DIR__/bin/pty-relay.py "$(whence -p claude 2>/dev/null || type -P claude 2>/dev/null || which claude)" "$@"
     else
         command claude "$@"
     fi
@@ -207,7 +207,7 @@ claude() {
 codex() {
     local CODEX_BIN_CMD="${CODEX_BIN:-codex}"
     if [[ -z "$TMUX" && -z "$PTY_RELAY_ACTIVE" ]]; then
-        PTY_RELAY_ACTIVE=1 python3 __INSTALL_DIR__/pty-relay.py "$CODEX_BIN_CMD" "$@"
+        PTY_RELAY_ACTIVE=1 python3 __INSTALL_DIR__/bin/pty-relay.py "$CODEX_BIN_CMD" "$@"
     else
         command "$CODEX_BIN_CMD" "$@"
     fi

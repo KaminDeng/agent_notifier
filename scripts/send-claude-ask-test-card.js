@@ -1,8 +1,8 @@
 'use strict';
 
-require('../lib/env-config');
+require('../src/lib/env-config');
 
-const { resolvePtsDevice } = require('../lib/terminal-inject');
+const { resolvePtsDevice } = require('../src/lib/terminal-inject');
 const {
     getFeishuAppClient,
     getProjectName,

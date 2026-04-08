@@ -48,7 +48,7 @@ test('single-select card maps second option to ArrowDown plus Enter', async () =
   const buttons = card.elements.find(el => el.tag === 'action' && el.actions?.[0]?.tag === 'button');
   assert.equal(buttons.actions[1].value.action_type, 'opt_1');
 
-  const { sessionState } = require('../../lib/session-state');
+  const { sessionState } = require('../../src/lib/session-state');
   const notification = sessionState.getNotification('state-single');
   assert.equal(notification.responses.opt_0.keys, '\r');
   assert.equal(notification.responses.opt_1.keys, '\x1b[B\r');
@@ -101,7 +101,7 @@ test('multi-question first card maps second option to ArrowDown plus Enter', asy
 
   assert.equal(sent.length, 1);
 
-  const { sessionState } = require('../../lib/session-state');
+  const { sessionState } = require('../../src/lib/session-state');
   const notification = sessionState.getNotification('state-multi');
   assert.equal(notification.responses.opt_0.keys, '\r');
   assert.equal(notification.responses.opt_1.keys, '\x1b[B\r');

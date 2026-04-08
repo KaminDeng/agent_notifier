@@ -1,6 +1,6 @@
 'use strict';
 
-require('../lib/env-config');
+require('../src/lib/env-config');
 const { createFeishuClient } = require('../src/channels/feishu/feishu-client');
 
 function parseArg(name) {

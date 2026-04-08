@@ -18,8 +18,8 @@
 
 const fs = require('fs');
 const { execSync } = require('child_process');
-const { createTerminalInjector } = require('../src/core/terminal-injector');
-const { createTerminalRouter } = require('../src/core/terminal-router');
+const { createTerminalInjector } = require('../core/terminal-injector');
+const { createTerminalRouter } = require('../core/terminal-router');
 
 // ── Shell 引用辅助 ──────────────────────────────────────────
 

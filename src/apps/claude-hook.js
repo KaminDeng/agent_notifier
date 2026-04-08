@@ -10,11 +10,11 @@
 
 const fs = require('fs');
 const path = require('path');
-const { envConfig } = require('../../lib/env-config');
-const { sessionState } = require('../../lib/session-state');
-const { resolvePtsDevice } = require('../../lib/terminal-inject');
+const { envConfig } = require('../lib/env-config');
+const { sessionState } = require('../lib/session-state');
+const { resolvePtsDevice } = require('../lib/terminal-inject');
 const Lark = require('@larksuiteoapi/node-sdk');
-const { parseMarkdownToElements } = require('../../lib/feishu-card-utils');
+const { parseMarkdownToElements } = require('../lib/feishu-card-utils');
 
 // ── 会话统计 ─────────────────────────────────────────────
 
@@ -582,7 +582,7 @@ async function main() {
             const meta = sessionState.data['__meta__'] || {};
             const autoDevices = meta.autoApproveDevices || [];
             if (autoDevices.includes(ptsDevice)) {
-                const { injectKeys } = require('../../lib/terminal-inject');
+                const { injectKeys } = require('../lib/terminal-inject');
                 injectKeys(ptsDevice, '2').catch(() => {});
                 return;
             }

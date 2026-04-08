@@ -9,10 +9,10 @@
 
 'use strict';
 
-require('../../lib/env-config');
+require('../lib/env-config');
 const Lark = require('@larksuiteoapi/node-sdk');
-const { SessionState } = require('../../lib/session-state');
-const { injectKeys, injectText } = require('../../lib/terminal-inject');
+const { SessionState } = require('../lib/session-state');
+const { injectKeys, injectText } = require('../lib/terminal-inject');
 const { createFeishuClient } = require('../channels/feishu/feishu-client');
 const { createFeishuInteractionHandler } = require('../channels/feishu/feishu-interaction-handler');
 const { createCodexInputBridge } = require('../adapters/codex/cli-input-bridge');

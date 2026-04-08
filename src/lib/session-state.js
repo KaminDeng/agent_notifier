@@ -2,8 +2,8 @@
 
 const fs = require('fs');
 const path = require('path');
-const { createSessionStore } = require('../src/core/session-store');
-const { createCardStateStore } = require('../src/core/card-state-store');
+const { createSessionStore } = require('../core/session-store');
+const { createCardStateStore } = require('../core/card-state-store');
 
 class SessionState {
     constructor(statePath) {

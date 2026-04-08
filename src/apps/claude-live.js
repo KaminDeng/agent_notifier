@@ -17,7 +17,7 @@
 
 const fs = require('fs');
 const path = require('path');
-require('../../lib/env-config'); // 加载 .env
+require('../lib/env-config'); // 加载 .env
 
 const KEY_TOOLS = new Set(['Bash', 'Write', 'Edit', 'NotebookEdit']);
 
@@ -235,7 +235,7 @@ async function flushBuffer(bufferPath) {
     const sessionKey = path.basename(bufferPath, '.jsonl').replace('claude-live-', '');
 
     // 加载 env-config（dotenv）获取飞书凭证
-    const { envConfig } = require('../../lib/env-config');
+    const { envConfig } = require('../lib/env-config');
     void envConfig;
 
     const appId = process.env.FEISHU_APP_ID;
@@ -256,7 +256,7 @@ async function flushBuffer(bufferPath) {
     }
 
     // ── 加载 session state，合并已有 entries ──────────────────────────────────
-    const { sessionState } = require('../../lib/session-state');
+    const { sessionState } = require('../lib/session-state');
     await sessionState.load();
 
     const stateKey = 'live_msg_' + sessionKey;

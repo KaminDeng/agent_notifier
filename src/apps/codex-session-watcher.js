@@ -4,7 +4,7 @@ const fs = require('node:fs');
 const path = require('node:path');
 const { spawn } = require('node:child_process');
 
-require('../../lib/env-config');
+require('../lib/env-config');
 
 const SESSIONS_ROOT = path.join(process.env.HOME || '', '.codex', 'sessions');
 const POLL_MS = 1000;

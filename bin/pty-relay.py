@@ -44,7 +44,7 @@ from collections import deque
 # ── 加载 .env ──────────────────────────────────────────────
 def _load_dotenv():
     """从脚本同目录的 .env 文件加载环境变量（不覆盖已有变量）"""
-    env_path = os.path.join(os.path.dirname(os.path.abspath(__file__)), '.env')
+    env_path = os.path.join(os.path.dirname(os.path.dirname(os.path.abspath(__file__))), '.env')
     try:
         with open(env_path) as f:
             for line in f:
@@ -189,7 +189,7 @@ def main():
     recent_user_inputs = deque(maxlen=40)
     FEED_INTERVAL_SEC = 2.0
     FEED_MAX_LINES = 0
-    install_dir = os.path.dirname(os.path.abspath(__file__))
+    install_dir = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
     capture_raw = os.environ.get('FEISHU_LIVE_CAPTURE', '').strip()
     if capture_raw.lower() in ('1', 'true', 'all', 'yes'):
         capture = {'tools': True, 'output': True, 'results': True}

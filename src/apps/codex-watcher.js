@@ -1,12 +1,12 @@
 'use strict';
 
-require('../../lib/env-config');
+require('../lib/env-config');
 const fs = require('node:fs');
 const path = require('node:path');
 const { createFeishuClient } = require('../channels/feishu/feishu-client');
 const { parseOutputBlock } = require('../adapters/codex/cli-output-parser');
-const { sessionState } = require('../../lib/session-state');
-const { parseMarkdownToElements } = require('../../lib/feishu-card-utils');
+const { sessionState } = require('../lib/session-state');
+const { parseMarkdownToElements } = require('../lib/feishu-card-utils');
 
 const TMP_DIR = '/tmp';
 const OUTPUT_PREFIX = 'claude-pty-output-';

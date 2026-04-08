@@ -1,10 +1,10 @@
 'use strict';
 
-require('../lib/env-config');
+require('../src/lib/env-config');
 const fs = require('node:fs');
 const path = require('node:path');
 const { createFeishuClient } = require('../src/channels/feishu/feishu-client');
-const { sessionState } = require('../lib/session-state');
+const { sessionState } = require('../src/lib/session-state');
 const { buildCodexFooter } = require('../src/apps/codex-card-footer');
 const { findLatestSessionFile, recoverStateFromContent } = require('../src/apps/codex-session-watcher');
 
