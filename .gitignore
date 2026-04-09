@@ -51,3 +51,4 @@ __pycache__/
 docs/*
 !docs/images
 !docs/ai_rules.md
+!docs/blog

@@ -1,93 +1,95 @@
-# Agent Notifier — Claude / Codex CLI 飞书通知助手
+[English](./README.md) | [中文](./README.zh-CN.md)
 
-> 把 AI 编程助手的所有交互搬到飞书，手机上就能批准、选方案、输指令，多终端同步，不用盯着终端。
+# Agent Notifier — Feishu (Lark) Notifications for Claude / Codex CLI
 
-## 为什么选择这个方案
+> Route all AI coding assistant interactions to Feishu. Approve, pick options, and send commands from your phone — multi-device, no terminal babysitting required.
 
-| 痛点 | 本项目的解法 |
-|------|-----------|
-| Claude / Codex 等权限、要确认，你必须守在终端前 | 飞书卡片实时推送，手机 / 电脑 / 平板任意设备点一下就行 |
-| 想在手机上也能操作，但没有官方 App | 飞书就是你的多端 App，iOS / Android / Mac / Windows / Web 全覆盖 |
-| 自建推送要服务器、域名、备案？ | 飞书长连接模式，不需要公网 IP 和域名，本机直连 |
-| 企业审批流程繁琐？ | 飞书企业自建应用秒审批，个人也能用，完全免费 |
-| 多个终端同时跑任务，通知乱了？ | 多终端并行路由，每个终端的交互独立送达，互不干扰 |
+## Why This Approach
+
+| Pain Point | How Agent Notifier Solves It |
+|------------|------------------------------|
+| Claude / Codex needs confirmations, permissions — you're chained to the terminal | Feishu interactive cards push in real time; tap once from phone, desktop, or tablet |
+| You want mobile access but there's no official app | Feishu **is** your multi-platform app — iOS / Android / Mac / Windows / Web |
+| Self-hosted push needs a server, domain, and DNS setup? | Feishu's long-polling mode connects directly — no public IP or domain required |
+| Enterprise approval workflows are painful? | Feishu enterprise custom apps get approved in minutes; works for individuals too, completely free |
+| Running tasks across multiple terminals — notifications are a mess? | Multi-terminal parallel routing keeps each terminal's interactions isolated and independent |
 
 ---
 
-## 效果预览
+## Preview
 
 <table>
 <tr>
 <td align="center" width="33%">
 <img src="./docs/images/permission-confirm.jpg" width="240" /><br/>
-<b>权限确认</b><br/>
-<sub>允许 / 拒绝 / 会话允许 / 全局允许 + 输入框<br/>脚注：项目名 · 终端标识(fifo) · 会话时长</sub>
+<b>Permission Confirmation</b><br/>
+<sub>Allow / Deny / Allow for Session / Allow Globally + text input<br/>Footer: project name · terminal ID (fifo) · session duration</sub>
 </td>
 <td align="center" width="33%">
 <img src="./docs/images/permission-options.jpg" width="240" /><br/>
-<b>权限选项</b><br/>
-<sub>ExitPlanMode 等工具选项按钮 + 输入框<br/>脚注：项目名 · 终端标识(fifo) · 会话时长</sub>
+<b>Permission Options</b><br/>
+<sub>Tool option buttons like ExitPlanMode + text input<br/>Footer: project name · terminal ID (fifo) · session duration</sub>
 </td>
 <td align="center" width="33%">
 <img src="./docs/images/ask-user-question.jpg" width="240" /><br/>
-<b>方案选择</b><br/>
-<sub>AskUserQuestion 动态选项 + Other + 自由输入<br/>脚注：项目名 · 终端标识(fifo) · 时间戳</sub>
+<b>Choice Selection</b><br/>
+<sub>AskUserQuestion dynamic options + Other + free-text input<br/>Footer: project name · terminal ID (fifo) · timestamp</sub>
 </td>
 </tr>
 <tr>
 <td align="center" width="33%">
 <img src="./docs/images/live-execution.jpg" width="240" /><br/>
-<b>实时执行摘要</b><br/>
-<sub>工具调用表格 · 同任务原地 patch 更新<br/>脚注：项目名 · 时间戳</sub>
+<b>Live Execution Summary</b><br/>
+<sub>Tool call table · patches in place for the same task<br/>Footer: project name · timestamp</sub>
 </td>
 <td align="center" width="33%">
 <img src="./docs/images/task-complete.jpg" width="240" /><br/>
-<b>任务完成</b><br/>
-<sub>改动总结 + 输入框续聊<br/>脚注：项目名 · 会话时长 · Token 用量统计</sub>
+<b>Task Complete</b><br/>
+<sub>Change summary + text input for follow-up<br/>Footer: project name · session duration · token usage stats</sub>
 </td>
 <td align="center" width="33%">
 <img src="./docs/images/task-complete-stats.jpg" width="240" /><br/>
-<b>完成通知（带统计）</b><br/>
-<sub>测试结果表格 + 输入框续聊<br/>脚注：项目名 · 会话时长 · Token 用量统计</sub>
+<b>Completion Notification (with Stats)</b><br/>
+<sub>Test results table + text input for follow-up<br/>Footer: project name · session duration · token usage stats</sub>
 </td>
 </tr>
 </table>
 
 ---
 
-## 支持的卡片类型
+## Card Types
 
-| 场景 | 卡片颜色 | 说明 |
-|------|---------|------|
-| 权限确认 | 🟠 橙色 | 允许 / 本次会话允许 / 拒绝 + 输入框 |
-| AskUserQuestion 单选 | 🟠 橙色 | 动态选项按钮 + Other + 输入框 |
-| AskUserQuestion 多题 | 🟠 橙色 | Q1 → Q2 → Q3 逐张发送 |
-| 任务完成 | 🟢 绿色 | 摘要、时长、Token + 输入框 |
-| 异常退出 | 🔴 红色 | 错误详情 + 输入框 |
-| 实时执行摘要 | 🔵 蓝色 | 同一任务原地 patch 更新 |
-
----
-
-## 功能一览
-
-**通知能力** — 飞书交互式卡片 / 任务完成与失败通知 / 实时执行摘要 / 会话时长与 Token 统计 / 本地语音提醒
-
-**交互能力** — 按钮点击回流终端 / 文本输入回流终端 / 多终端并行路由 / Claude 与 Codex 共用一套入口
+| Scenario | Card Color | Description |
+|----------|------------|-------------|
+| Permission confirmation | 🟠 Orange | Allow / Allow for session / Deny + text input |
+| AskUserQuestion single-select | 🟠 Orange | Dynamic option buttons + Other + text input |
+| AskUserQuestion multi-part | 🟠 Orange | Q1 → Q2 → Q3 sent one card at a time |
+| Task complete | 🟢 Green | Summary, duration, tokens + text input |
+| Abnormal exit | 🔴 Red | Error details + text input |
+| Live execution summary | 🔵 Blue | Patches the same card in place for the current task |
 
 ---
 
-## 快速开始
+## Feature Overview
 
-### 1. 克隆仓库
+**Notifications** — Feishu interactive cards / task completion & failure alerts / live execution summaries / session duration & token stats / local audio alerts
+
+**Interactions** — Button clicks flow back to the terminal / text input flows back to the terminal / multi-terminal parallel routing / shared entry point for both Claude and Codex
+
+---
+
+## Quick Start
+
+### 1. Clone the Repository
 
 ```bash
 git clone <repo-url>
 cd agent_notifier
 ```
 
-### 2. 配置飞书应用
+### 2. Configure the Feishu App
 
-编辑 `.env`（首次安装会自动从 `.env.example` 创建）：
+Edit `.env` (automatically created from `.env.example` on first install):
 
 ```bash
 FEISHU_APP_ID=your_app_id_here
@@ -95,76 +97,76 @@ FEISHU_APP_SECRET=your_app_secret_here
 # FEISHU_CHAT_ID=
 ```
 
-> 飞书自建应用创建和审批流程见下方[飞书配置步骤](#飞书配置步骤)。
+> For step-by-step instructions on creating and approving a Feishu custom app, see [Feishu Setup Guide](#feishu-setup-guide) below.
 
-### 3. 一键安装
+### 3. Install
 
 ```bash
 bash install.sh
 ```
 
-安装脚本会自动完成：
-- 检查依赖（Node.js、npm、python3）
-- **清理旧配置**（自动调用 `uninstall.sh`）
-- 安装 Node.js 依赖
-- 从 `.env.example` 创建 `.env`（如不存在）
-- 写入 Claude Code hooks 到 `~/.claude/settings.json`
-- 注入 `claude` / `codex` shell 包装函数
-- **自动启动飞书监听器并注册开机自启**
+The install script handles everything automatically:
+- Checks dependencies (Node.js, npm, python3)
+- **Cleans up previous configuration** (runs `uninstall.sh` internally)
+- Installs Node.js dependencies
+- Creates `.env` from `.env.example` (if it doesn't exist)
+- Writes Claude Code hooks to `~/.claude/settings.json`
+- Injects `claude` / `codex` shell wrapper functions
+- **Starts the Feishu listener and registers it for auto-start on boot**
 
-> 重复运行 `install.sh` 是安全的 — 每次会先清理再重新安装。
+> Running `install.sh` multiple times is safe — it cleans up before reinstalling each time.
 
-### 4. 重新加载 shell
+### 4. Reload Your Shell
 
 ```bash
 source ~/.zshrc
-# 或 source ~/.bashrc
+# or source ~/.bashrc
 ```
 
-### 5. 开始使用
+### 5. Start Using It
 
 ```bash
 claude
-# 或
+# or
 codex
 ```
 
 ---
 
-## 卸载
+## Uninstall
 
 ```bash
 bash uninstall.sh
 ```
 
-卸载脚本会清理：
-- 停止并移除飞书监听器服务（launchd / systemd / crontab）
-- 终止后台进程（feishu-listener、codex-watcher、codex-session-watcher、pty-relay）
-- 从 `~/.claude/settings.json` 移除 hooks
-- 从 `~/.zshrc` / `~/.bashrc` 移除 shell 函数注入
-- 清理运行时文件（session-state、pid、log、/tmp 缓冲文件）
+The uninstall script cleans up:
+- Stops and removes the Feishu listener service (launchd / systemd / crontab)
+- Terminates background processes (feishu-listener, codex-watcher, codex-session-watcher, pty-relay)
+- Removes hooks from `~/.claude/settings.json`
+- Removes shell function injections from `~/.zshrc` / `~/.bashrc`
+- Cleans up runtime files (session-state, pid, log, /tmp buffer files)
 
-> `.env` 和 `node_modules/` 会保留，如需完全清除请手动删除。
+> `.env` and `node_modules/` are preserved. Delete them manually if you want a full cleanup.
 
 ---
 
-## 跨平台支持
+## Cross-Platform Support
 
-| 平台 | 服务管理方式 | 开机自启 |
-|------|------------|---------|
+| Platform | Service Management | Auto-Start on Boot |
+|----------|-------------------|--------------------|
 | macOS | launchd (`~/Library/LaunchAgents/`) | `RunAtLoad` + `KeepAlive` |
-| Linux (有 systemd user session) | systemd user service | `systemctl --user enable` |
-| Linux (无 systemd，如纯 SSH) | nohup + crontab `@reboot` | crontab 回退方案 |
+| Linux (with systemd user session) | systemd user service | `systemctl --user enable` |
+| Linux (no systemd, e.g. pure SSH) | nohup + crontab `@reboot` | crontab fallback |
 
-### 服务管理命令
+### Service Management Commands
 
 **macOS:**
 ```bash
-# 查看状态
+# Check status
 launchctl print gui/$(id -u)/com.agent-notifier.feishu-listener
-# 停止
+# Stop
 launchctl bootout gui/$(id -u) ~/Library/LaunchAgents/com.agent-notifier.feishu-listener.plist
-# 启动
+# Start
 launchctl bootstrap gui/$(id -u) ~/Library/LaunchAgents/com.agent-notifier.feishu-listener.plist
 ```
 
@@ -177,24 +179,24 @@ journalctl --user -u agent-notifier-feishu -f
 
 ---
 
-## 配置说明
+## Configuration
 
-### `.env` 示例
+### `.env` Example
 
 ```bash
-# 飞书自建应用
+# Feishu custom app
 FEISHU_APP_ID=your_app_id_here
 FEISHU_APP_SECRET=your_app_secret_here
 # FEISHU_CHAT_ID=
 
-# 默认宿主（可选）
+# Default host (optional)
 # DEFAULT_AGENT_HOST=claude
 # CODEX_BIN=codex
 
-# 显式指定 tmux pane（可选）
+# Explicitly specify tmux pane (optional)
 # CLAUDE_TMUX_TARGET=claude:0.0
 
-# 实时摘要（可选）
+# Live summary (optional)
 # FEISHU_LIVE_CAPTURE=1
 # FEISHU_LIVE_DEBOUNCE_MS=3000
 
@@ -204,64 +206,64 @@ NOTIFICATION_ENABLED=true
 SOUND_ENABLED=true
 ```
 
-### `FEISHU_LIVE_CAPTURE` 的含义
+### `FEISHU_LIVE_CAPTURE` Options
 
-可选值：
-- `1` / `true`：全部开启
-- `tools`：工具 / 命令摘要
-- `output`：助手输出内容
-- `results`：工具执行结果摘要
-- 也可以组合：`tools,output,results`
+Accepted values:
+- `1` / `true`: Enable all capture modes
+- `tools`: Tool / command summaries
+- `output`: Assistant output content
+- `results`: Tool execution result summaries
+- Combine as needed: `tools,output,results`
 
-Codex 的输出来自 `~/.codex/sessions/*.jsonl`，不是靠终端文本猜测。
+Codex output is sourced from `~/.codex/sessions/*.jsonl`, not inferred from terminal text.
 
 ---
 
-## 飞书配置步骤
+## Feishu Setup Guide
 
-### 1. 创建自建应用
-登录 [飞书开放平台](https://open.feishu.cn)，创建企业自建应用。
+### 1. Create a Custom App
+Log in to the [Feishu Open Platform](https://open.feishu.cn) and create an enterprise custom app.
 
-### 2. 获取 App ID / App Secret
-在应用后台复制凭证，填入 `.env`。
+### 2. Get App ID / App Secret
+Copy the credentials from the app dashboard and add them to `.env`.
 
-### 3. 开启机器人能力
-在应用能力里启用机器人。
+### 3. Enable Bot Capability
+Turn on the Bot feature under App Capabilities.
 
-### 4. 事件订阅选择长连接
-不需要公网 IP 或域名。
+### 4. Set Event Subscription to Long Polling
+No public IP or domain needed.
 
-### 5. 添加事件
+### 5. Add Events
 - `card.action.trigger`
 
-### 6. 申请权限
+### 6. Request Permissions
 - `im:message`
 - `im:message:send_as_bot`
 - `im:chat:readonly`
 
-### 7. 发布应用版本
-发布后把机器人加入目标群。
+### 7. Publish the App
+After publishing, add the bot to your target group chat.
 
 ---
 
-## 常用命令
+## Common Commands
 
-### 安装 / 卸载
-
-```bash
-bash install.sh      # 安装（自动清理旧配置 → 重新安装）
-bash uninstall.sh    # 卸载（停止服务 → 清理配置）
-```
-
-### 飞书监听器（手动管理）
+### Install / Uninstall
 
 ```bash
-npm run feishu-listener         # 前台运行
-npm run feishu-listener:start   # nohup 后台启动
-npm run feishu-listener:stop    # 停止后台进程
+bash install.sh      # Install (auto-cleans old config → reinstalls)
+bash uninstall.sh    # Uninstall (stops services → cleans up config)
 ```
 
-### Codex 相关
+### Feishu Listener (Manual)
+
+```bash
+npm run feishu-listener         # Run in foreground
+npm run feishu-listener:start   # Start in background with nohup
+npm run feishu-listener:stop    # Stop background process
+```
+
+### Codex Commands
 
 ```bash
 npm run codex-watcher
@@ -271,29 +273,29 @@ npm run codex-watcher:stop
 
 ---
 
-## 架构概览
+## Architecture Overview
 
-### Claude 链路
-- Claude Hooks 触发事件 → `src/apps/claude-hook.js` 生成卡片 → 飞书监听器接收回调 → 注入回本地终端
+### Claude Pipeline
+- Claude Hooks fire events → `src/apps/claude-hook.js` builds cards → Feishu listener receives callbacks → input injected back into the local terminal
 
-### Codex 链路
-- `pty-relay.py` 建立终端桥接 → `src/apps/codex-watcher.js` 负责交互卡 → `src/apps/codex-session-watcher.js` 读取 session 文件 → `src/apps/codex-live.js` 负责实时摘要卡
+### Codex Pipeline
+- `pty-relay.py` establishes a terminal bridge → `src/apps/codex-watcher.js` handles interactive cards → `src/apps/codex-session-watcher.js` reads session files → `src/apps/codex-live.js` handles live summary cards
 
-### 终端注入方式
+### Terminal Injection Methods
 
-飞书输入想要真正送回 Claude / Codex，本项目支持多种方式：
+To route Feishu input back to Claude / Codex, the project supports several injection methods:
 
-| 方式 | 场景 |
-|------|------|
-| tmux | 推荐，在 tmux 会话中运行 `claude` / `codex` |
-| PTY 代理 | 非 tmux 环境，`pty-relay.py` 自动建立 FIFO 注入通道 |
-| 显式指定 tmux pane | `CLAUDE_TMUX_TARGET=claude:0.0` |
+| Method | Use Case |
+|--------|----------|
+| tmux | Recommended — run `claude` / `codex` inside a tmux session |
+| PTY relay | Non-tmux environments; `pty-relay.py` sets up a FIFO injection channel automatically |
+| Explicit tmux pane | `CLAUDE_TMUX_TARGET=claude:0.0` |
 
-注入优先级：`CLAUDE_TMUX_TARGET` > 自动检测 tmux pane > FIFO 中继 > pty master 直写 > TIOCSTI 备用
+Injection priority: `CLAUDE_TMUX_TARGET` > auto-detected tmux pane > FIFO relay > pty master direct write > TIOCSTI fallback
 
-### Hook 配置
+### Hook Configuration
 
-使用 `install.sh` 会自动完成，手动配置写入 `~/.claude/settings.json`：
+Handled automatically by `install.sh`. For manual setup, add to `~/.claude/settings.json`:
 
 ```json
 {
@@ -308,38 +310,38 @@ npm run codex-watcher:stop
 
 ---
 
-## 验证与联调
+## Testing & Debugging
 
 ```bash
-# 跑测试
+# Run tests
 bun test tests/
 python3 -m py_compile pty-relay.py
 
-# 发测试卡
+# Send test cards
 node scripts/send-codex-feishu-test-cards.js --pts /dev/pts/<N>
 npm run ask:e2e:card
 ```
 
-建议至少手动验证：
-- Claude 完成卡发送是否正常
-- Codex 文本输入 / 审批 / 单选 / 多选是否都能回流
-- Codex live 卡是否同任务 patch、新任务 create
-- 长文本是否被正确分块
+Recommended manual checks:
+- Claude completion card sends correctly
+- Codex text input / approval / single-select / multi-select all flow back to the terminal
+- Codex live cards patch in place for the same task and create new cards for new tasks
+- Long text is properly chunked
 
 ---
 
-## 注意事项
+## Notes
 
-- PTY raw mode 下 Enter 是 `\r`，不是 `\n`
-- 完成类卡片会带输入框，方便直接续聊
-- `im.message.patch` 会丢失输入框，所以完成卡通常新建，执行中卡使用 patch
-- 敏感配置放在 `.env`，不要提交
+- In PTY raw mode, Enter sends `\r` (CR), not `\n` (LF)
+- Completion cards include a text input field for easy follow-up conversation
+- `im.message.patch` strips input fields, so completion cards are always sent as new messages while in-progress cards use patch
+- Keep sensitive config in `.env` — do not commit it
 
 ---
 
-## 开发说明
+## Contributing
 
-如果你是来二次开发的，优先看：
+If you're looking to contribute or extend the project, start with:
 - `docs/ai_rules.md`
 - `docs/ai_docs/README.md`
 - `src/apps/claude-hook.js`
