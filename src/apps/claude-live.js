@@ -18,6 +18,7 @@
 const fs = require('fs');
 const path = require('path');
 require('../lib/env-config'); // 加载 .env
+const { buildCardFooter } = require('../lib/card-footer');
 
 const KEY_TOOLS = new Set(['Bash', 'Write', 'Edit', 'NotebookEdit']);
 
@@ -325,9 +326,10 @@ async function flushBuffer(bufferPath) {
 
     // footer
     const projectName = allEntries[0]?.projectName || '';
-    const noteParts = [];
-    if (projectName) noteParts.push(`📁 ${projectName}`);
-    noteParts.push(`⏰ ${getTimestamp()}`);
+    const footerEl = buildCardFooter({
+        host: 'claude',
+        projectName,
+    });
 
     const cardElements = [];
     if (claudeOutput) {
@@ -348,7 +350,7 @@ async function flushBuffer(bufferPath) {
     });
     cardElements.push({ tag: 'hr' });
     cardElements.push(...stepRows);
-    cardElements.push({ tag: 'div', text: { tag: 'lark_md', content: noteParts.join('  ·  ') } });
+    cardElements.push(footerEl);
 
     const card = {
         config: { wide_screen_mode: true },

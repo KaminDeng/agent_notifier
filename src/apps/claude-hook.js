@@ -15,6 +15,7 @@ const { sessionState } = require('../lib/session-state');
 const { resolvePtsDevice } = require('../lib/terminal-inject');
 const Lark = require('@larksuiteoapi/node-sdk');
 const { parseMarkdownToElements } = require('../lib/feishu-card-utils');
+const { buildCardFooter } = require('../lib/card-footer');
 
 // ── 会话统计 ─────────────────────────────────────────────
 
@@ -58,12 +59,6 @@ function parseSessionStats(transcriptPath) {
     } catch {
         return null;
     }
-}
-
-function formatTokenCount(n) {
-    if (n >= 1000000) return (n / 1000000).toFixed(1) + 'M';
-    if (n >= 1000) return (n / 1000).toFixed(1) + 'k';
-    return String(n);
 }
 
 // ── 工具函数 ─────────────────────────────────────────────
@@ -184,24 +179,21 @@ function buildInputRow(stateKey) {
     return { tag: 'action', actions };
 }
 
-function buildCard(title, body, template, projectName, stats) {
-    const noteParts = [];
-    if (projectName) noteParts.push(`📁 ${projectName}`);
-    if (stats && stats.duration) noteParts.push(`⏱ ${stats.duration}`);
-    noteParts.push(`⏰ ${getTimestamp()}`);
-
+function buildCard(title, body, template, projectName, stats, ptsDevice) {
     const elements = parseMarkdownToElements(body);
 
-    if (stats) {
-        const tokenParts = [];
-        tokenParts.push(`输入 ${formatTokenCount(stats.inputTokens)}`);
-        tokenParts.push(`输出 ${formatTokenCount(stats.outputTokens)}`);
-        if (stats.cacheReadTokens > 0) tokenParts.push(`缓存读 ${formatTokenCount(stats.cacheReadTokens)}`);
-        if (stats.cacheCreateTokens > 0) tokenParts.push(`缓存写 ${formatTokenCount(stats.cacheCreateTokens)}`);
-        noteParts.push(`📊 ${tokenParts.join(' · ')}`);
-    }
-
-    elements.push({ tag: 'markdown', content: noteParts.join('  ·  ') });
+    elements.push(buildCardFooter({
+        host: 'claude',
+        ptsDevice,
+        projectName,
+        duration: stats?.duration || null,
+        tokens: stats ? {
+            inputTokens: stats.inputTokens,
+            outputTokens: stats.outputTokens,
+            cacheReadTokens: stats.cacheReadTokens,
+            cacheCreateTokens: stats.cacheCreateTokens,
+        } : null,
+    }));
 
     return {
         config: { wide_screen_mode: true },
@@ -215,14 +207,14 @@ function buildCard(title, body, template, projectName, stats) {
 
 // ── 事件处理 ─────────────────────────────────────────────
 
-function handleStop(data, stats) {
+function handleStop(data, stats, ptsDevice) {
     const lastMsg = data.last_assistant_message || '';
     const title = extractTitle(lastMsg);
     const body = truncate(lastMsg) || '任务已完成，可以查看执行结果了';
-    return buildCard(`✅ ${title}`, body, 'green', getProjectName(data.cwd), stats);
+    return buildCard(`✅ ${title}`, body, 'green', getProjectName(data.cwd), stats, ptsDevice);
 }
 
-function handleNotification(data, stats) {
+function handleNotification(data, stats, ptsDevice) {
     const type = data.notification_type || '';
     const message = data.message || '需要你的操作';
 
@@ -233,10 +225,10 @@ function handleNotification(data, stats) {
     };
     const title = titleMap[type] || '等待操作';
 
-    return buildCard(`⏸️ ${title}`, message, 'orange', getProjectName(data.cwd), stats);
+    return buildCard(`⏸️ ${title}`, message, 'orange', getProjectName(data.cwd), stats, ptsDevice);
 }
 
-function handleStopFailure(data, stats) {
+function handleStopFailure(data, stats, ptsDevice) {
     const error = data.error || 'unknown';
     const details = data.error_details || '发生未知错误';
 
@@ -250,7 +242,7 @@ function handleStopFailure(data, stats) {
     };
     const title = errorMap[error] || '异常退出';
 
-    return buildCard(`❌ ${title}`, details, 'red', getProjectName(data.cwd), stats);
+    return buildCard(`❌ ${title}`, details, 'red', getProjectName(data.cwd), stats, ptsDevice);
 }
 
 // ── 飞书自建应用 API 发送卡片 ──────────────────────────────
@@ -289,12 +281,12 @@ async function sendFeishuAppCard(data, event, stats) {
     const handler = feishuHandlers[event];
     if (!handler) return;
 
-    const card = handler(data, stats);
-
     // 给所有卡片添加输入框，支持从卡片直接输入指令
     const sessionId = data.session_id || '';
     const stateKey = `feishu_${sessionId.substring(0, 8)}_${Date.now()}`;
     const ptsDevice = resolvePtsDevice(process.ppid);
+
+    const card = handler(data, stats, ptsDevice);
 
     // 在 footer（最后一个元素）之前插入输入框
     const inputEl = buildInputRow(stateKey);
@@ -360,14 +352,12 @@ async function sendFeishuInteractiveCard(data, stats) {
             const stateKey = `feishu_ask_${sessionPrefix}_${Date.now()}`;
             const notificationType = 'AskUserQuestion';
 
-            const termLabel = ptsDevice?.startsWith('tmux:')
-                ? `🖥 ${ptsDevice.substring(5)}`
-                : (ptsDevice || '🖥 未知终端');
-            const noteArr = [];
-            if (projectName) noteArr.push(`📁 ${projectName}`);
-            noteArr.push(termLabel);
-            noteArr.push(`⏰ ${getTimestamp()}`);
-            const noteParts = noteArr.join('  ·  ');
+            const footerEl = buildCardFooter({
+                host: 'claude',
+                ptsDevice,
+                projectName,
+            });
+            const noteParts = footerEl.content;
 
             if (questions.length > 1) {
                 await sendMultiQuestionFirstCard(app, questions, stateKey, ptsDevice, sessionId, notificationType, noteParts);
@@ -388,14 +378,14 @@ async function sendFeishuInteractiveCard(data, stats) {
 
     // 解析终端目标（提前获取用于卡片显示）
     const ptsDevice = resolvePtsDevice(process.ppid);
-    const termLabel = ptsDevice?.startsWith('tmux:') ? `🖥 ${ptsDevice.substring(5)}` : (ptsDevice || '🖥 未知终端');
 
     // 构建底部信息栏
-    const noteParts = [];
-    if (projectName) noteParts.push(`📁 ${projectName}`);
-    noteParts.push(termLabel);
-    if (stats && stats.duration) noteParts.push(`⏱ ${stats.duration}`);
-    noteParts.push(`⏰ ${getTimestamp()}`);
+    const footerEl = buildCardFooter({
+        host: 'claude',
+        ptsDevice,
+        projectName,
+        duration: stats?.duration || null,
+    });
 
     let title, buttons, responses, cardMessage;
 
@@ -525,7 +515,7 @@ async function sendFeishuInteractiveCard(data, stats) {
         cardElements.push(buildInputRow(stateKey));
     }
 
-    cardElements.push({ tag: 'markdown', content: noteParts.join('  ·  ') });
+    cardElements.push(footerEl);
 
     const card = {
         config: { wide_screen_mode: true },

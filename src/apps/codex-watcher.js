@@ -7,6 +7,7 @@ const { createFeishuClient } = require('../channels/feishu/feishu-client');
 const { parseOutputBlock } = require('../adapters/codex/cli-output-parser');
 const { sessionState } = require('../lib/session-state');
 const { parseMarkdownToElements } = require('../lib/feishu-card-utils');
+const { buildCardFooter } = require('../lib/card-footer');
 
 const TMP_DIR = '/tmp';
 const OUTPUT_PREFIX = 'claude-pty-output-';
@@ -74,18 +75,6 @@ function computeReadPlan({ prevOffset = 0, nextOffset = 0, prevMtimeMs = 0, next
     };
 }
 
-function nowText() {
-    return new Date().toLocaleString('zh-CN', {
-        hour12: false,
-        year: 'numeric',
-        month: '2-digit',
-        day: '2-digit',
-        hour: '2-digit',
-        minute: '2-digit',
-        second: '2-digit',
-    });
-}
-
 function buildStateKey(ptsNum) {
     return `feishu_codex_auto_${ptsNum}_${Date.now()}_${Math.random().toString(36).slice(2, 7)}`;
 }
@@ -106,18 +95,15 @@ function buildInputRow(stateKey) {
 }
 
 function buildFooter({ ptsDevice, cwd, tokens }) {
-    const parts = ['🤖 Codex'];
-    if (ptsDevice) parts.push(`🖥 ${ptsDevice.replace('/dev/', '')}`);
     const cwdLabel = cwd && String(cwd).trim() && cwd !== 'N/A'
         ? (path.basename(String(cwd).trim()) || String(cwd).trim())
         : null;
-    if (cwdLabel) parts.push(`📁 ${cwdLabel}`);
-    if (tokens) {
-        const fmt = n => (n != null && n >= 1000) ? (n / 1000).toFixed(1) + 'k' : String(n ?? 'N/A');
-        parts.push(`📊 in ${fmt(tokens.input)} · out ${fmt(tokens.output)}`);
-    }
-    parts.push(`⏰ ${nowText()}`);
-    return { tag: 'markdown', content: parts.join('  ·  ') };
+    return buildCardFooter({
+        host: 'codex',
+        ptsDevice,
+        projectName: cwdLabel,
+        tokens: tokens || null,
+    });
 }
 
 function buildExecutionSummaryCard(summaryData, ptsDevice, stateKey) {

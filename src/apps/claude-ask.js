@@ -17,6 +17,7 @@ const { envConfig } = require('../lib/env-config');
 const { sessionState } = require('../lib/session-state');
 const { resolvePtsDevice } = require('../lib/terminal-inject');
 const { buildMultiSelectCard, parseMarkdownToElements } = require('../lib/feishu-card-utils');
+const { buildCardFooter } = require('../lib/card-footer');
 
 // ── Utility functions ─────────────────────────────────────
 
@@ -350,14 +351,12 @@ async function main() {
 
     // Build note parts (footer)
     const projectName = getProjectName(cwd);
-    const termLabel = ptsDevice?.startsWith('tmux:')
-        ? `🖥 ${ptsDevice.substring(5)}`
-        : (ptsDevice || '🖥 未知终端');
-    const noteParts_arr = [];
-    if (projectName) noteParts_arr.push(`📁 ${projectName}`);
-    noteParts_arr.push(termLabel);
-    noteParts_arr.push(`⏰ ${getTimestamp()}`);
-    const noteParts = noteParts_arr.join('  ·  ');
+    const footerEl = buildCardFooter({
+        host: 'claude',
+        ptsDevice,
+        projectName,
+    });
+    const noteParts = footerEl.content;
 
     if (questions.length > 1) {
         // Case C: multiple questions
