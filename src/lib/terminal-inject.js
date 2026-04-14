@@ -21,6 +21,39 @@ const { execSync } = require('child_process');
 const { createTerminalInjector } = require('../core/terminal-injector');
 const { createTerminalRouter } = require('../core/terminal-router');
 
+// ── 平台检测 ────────────────────────────────────────────────
+
+const isMac = process.platform === 'darwin';
+
+/** 解析 tmux 完整路径（后台进程可能缺少 Homebrew PATH） */
+const TMUX_BIN = (() => {
+    try {
+        return execSync('which tmux', { encoding: 'utf8', timeout: 2000, stdio: ['pipe', 'pipe', 'pipe'] }).trim() || 'tmux';
+    } catch {
+        return isMac ? '/opt/homebrew/bin/tmux' : 'tmux';
+    }
+})();
+
+/** 检查路径是否为有效的终端设备（Linux /dev/pts/N 或 macOS /dev/ttysNNN） */
+function isTtyDevice(devPath) {
+    return devPath.startsWith('/dev/pts/') || devPath.startsWith('/dev/ttys');
+}
+
+/** 通过 ps 获取指定 PID 的终端设备路径（跨平台） */
+function getTtyByPid(pid) {
+    try {
+        const tty = execSync(`ps -o tty= -p ${pid}`, {
+            encoding: 'utf8', timeout: 2000, stdio: ['pipe', 'pipe', 'pipe'],
+        }).trim();
+        if (!tty || tty === '?' || tty === '??') return null;
+        const devPath = tty.startsWith('/dev/') ? tty : `/dev/${tty}`;
+        if (isTtyDevice(devPath)) return devPath;
+        return null;
+    } catch {
+        return null;
+    }
+}
+
 // ── Shell 引用辅助 ──────────────────────────────────────────
 
 function shellQuote(str) {
@@ -34,7 +67,8 @@ function shellQuote(str) {
  *
  * 返回格式:
  *   { type: 'tmux', target: 'session:window.pane' }
- *   { type: 'pts',  target: '/dev/pts/N' }
+ *   { type: 'pts',  target: '/dev/pts/N' }       // Linux
+ *   { type: 'pts',  target: '/dev/ttysNNN' }      // macOS
  *   null — 无法解析
  */
 function resolveTarget() {
@@ -42,18 +76,26 @@ function resolveTarget() {
     const explicit = process.env.CLAUDE_TMUX_TARGET;
     if (explicit) return { type: 'tmux', target: explicit };
 
-    // 策略 2: 沿进程树向上查找，同时检测 tmux 和 pts
+    // 策略 2: 沿进程树向上查找终端设备
     let pid = process.pid;
     let ptsDevice = null;
 
     for (let depth = 0; depth < 10; depth++) {
-        // 检查 fd/0 是否指向 pts
-        try {
-            const fd0 = fs.readlinkSync(`/proc/${pid}/fd/0`);
-            if (fd0.startsWith('/dev/pts/') && !ptsDevice) {
-                ptsDevice = fd0;
-            }
-        } catch {}
+        // Linux: 通过 /proc 快速获取 tty（无需 fork 子进程）
+        if (!isMac && !ptsDevice) {
+            try {
+                const fd0 = fs.readlinkSync(`/proc/${pid}/fd/0`);
+                if (fd0.startsWith('/dev/pts/')) {
+                    ptsDevice = fd0;
+                }
+            } catch {}
+        }
+
+        // macOS（或 Linux /proc 失败时）: 通过 ps 获取 tty
+        if (!ptsDevice) {
+            const tty = getTtyByPid(pid);
+            if (tty) ptsDevice = tty;
+        }
 
         // 获取父进程 PID
         let ppid;
@@ -65,20 +107,21 @@ function resolveTarget() {
         pid = ppid;
     }
 
-    // 策略 3: 如果找到了 pts，尝试通过 tmux 找到对应的 pane
+    // 策略 3: 如果找到了终端设备，尝试通过 tmux 找到对应的 pane
     if (ptsDevice) {
         const tmuxTarget = findTmuxPaneByPts(ptsDevice);
         if (tmuxTarget) return { type: 'tmux', target: tmuxTarget };
 
-        // 策略 4: 检查是否有 FIFO 中继（relay.js）
-        const ptsNum = ptsDevice.replace('/dev/pts/', '');
-        const fifoPath = `/tmp/agent-inject-pts${ptsNum}`;
-        try {
-            const stat = fs.statSync(fifoPath);
-            if (stat.isFIFO()) return { type: 'fifo', target: fifoPath };
-        } catch {}
+        // 策略 4: 检查是否有 FIFO 中继（仅 Linux /dev/pts/）
+        if (ptsDevice.startsWith('/dev/pts/')) {
+            const ptsNum = ptsDevice.replace('/dev/pts/', '');
+            const fifoPath = `/tmp/agent-inject-pts${ptsNum}`;
+            try {
+                const stat = fs.statSync(fifoPath);
+                if (stat.isFIFO()) return { type: 'fifo', target: fifoPath };
+            } catch {}
+        }
 
-        // 先回到 pts（TIOCSTI 直接调用，可能被拒绝）
         return { type: 'pts', target: ptsDevice };
     }
 
@@ -92,7 +135,7 @@ function resolveTarget() {
 function findTmuxPaneByPts(ptsDevice) {
     try {
         const output = execSync(
-            "tmux list-panes -a -F '#{pane_tty} #{session_name}:#{window_index}.#{pane_index}'",
+            `${TMUX_BIN} list-panes -a -F '#{pane_tty} #{session_name}:#{window_index}.#{pane_index}'`,
             { encoding: 'utf8', timeout: 3000, stdio: ['pipe', 'pipe', 'pipe'] }
         ).trim();
 
@@ -170,7 +213,7 @@ async function injectKeys(target, keys) {
             target = { type: 'tmux', target: target.substring(5) };
         } else if (target.startsWith('fifo:')) {
             target = { type: 'fifo', target: target.substring(5) };
-        } else if (target.startsWith('/dev/pts/')) {
+        } else if (isTtyDevice(target)) {
             target = { type: 'pts', target: target };
         } else {
             throw new Error(`Unknown target format: ${target}`);
@@ -198,14 +241,16 @@ async function injectKeys(target, keys) {
     }
 
     if (target.type === 'pts') {
-        // 先检查 FIFO 中继
-        const ptsNum = target.target.replace('/dev/pts/', '');
-        const fifoPath = `/tmp/agent-inject-pts${ptsNum}`;
-        try {
-            if (fs.statSync(fifoPath).isFIFO()) {
-                return injectViaFifo(fifoPath, keys);
-            }
-        } catch {}
+        // 先检查 FIFO 中继（仅 Linux /dev/pts/）
+        if (target.target.startsWith('/dev/pts/')) {
+            const ptsNum = target.target.replace('/dev/pts/', '');
+            const fifoPath = `/tmp/agent-inject-pts${ptsNum}`;
+            try {
+                if (fs.statSync(fifoPath).isFIFO()) {
+                    return injectViaFifo(fifoPath, keys);
+                }
+            } catch {}
+        }
 
         // 再尝试 pty master 写入（现代方案）
         try {
@@ -254,7 +299,7 @@ function injectViaTmux(target, keys) {
         else parts.push(shellQuote(ch));
     }
 
-    const cmd = `tmux send-keys -t ${shellQuote(target)} ${parts.join(' ')}`;
+    const cmd = `${TMUX_BIN} send-keys -t ${shellQuote(target)} ${parts.join(' ')}`;
     try {
         execSync(cmd, { timeout: 5000, stdio: 'pipe' });
         return true;
