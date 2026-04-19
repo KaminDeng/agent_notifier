@@ -95,6 +95,30 @@ test('buildCodexLiveCard renders structured step rows and correct step count', (
   assert.ok(dataRow, '应渲染步骤数据行');
 });
 
+test('buildCodexLiveCard truncates long command/file input to single line', () => {
+  const card = buildCodexLiveCard({
+    entries: [{
+      tool: 'exec_command',
+      icon: '⚡',
+      input: 'rtk git add very/long/path/to/some/file/name/that/keeps/growing/and/growing.js\nsecond line',
+      result: '退出码 0',
+      phase: 'commentary',
+    }],
+    projectName: 'demo',
+    phase: 'commentary',
+  });
+
+  const dataRow = card.elements.find((el) =>
+    el.tag === 'column_set' &&
+    el.columns?.[0]?.elements?.[0]?.text?.content === '1'
+  );
+  const commandCell = dataRow?.columns?.[2]?.elements?.[0]?.text?.content || '';
+  assert.ok(commandCell.startsWith('`rtk git add'));
+  assert.ok(commandCell.endsWith('…`'));
+  assert.ok(!commandCell.includes('\n'));
+  assert.ok(commandCell.length <= 40);
+});
+
 test('buildCodexLiveCard renders fallback summary when only steps exist', () => {
   const card = buildCodexLiveCard({
     entries: [{

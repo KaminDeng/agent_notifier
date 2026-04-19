@@ -88,6 +88,18 @@ function buildStepFallbackSummary(entries) {
     return `正在执行：${labels.join('；')}${suffix}`;
 }
 
+function formatStepInput(input, maxChars = 36) {
+    const raw = String(input || '').trim();
+    if (!raw) return '—';
+    const firstLine = raw.split('\n')[0].trim();
+    if (!firstLine) return '—';
+    const collapsed = firstLine.replace(/\s+/g, ' ');
+    const text = collapsed.length > maxChars
+        ? `${collapsed.slice(0, maxChars)}…`
+        : collapsed;
+    return `\`${text}\``;
+}
+
 function buildCodexLiveCard({ entries, projectName, ptsDevice = null, phase = null, inputStateKey = null }) {
     const safeEntries = Array.isArray(entries) ? entries : [];
     const outputEntries = safeEntries.filter((entry) => String(entry?.output || '').trim());
@@ -121,7 +133,7 @@ function buildCodexLiveCard({ entries, projectName, ptsDevice = null, phase = nu
                 tag: 'column',
                 width: 'weighted',
                 weight: 3,
-                elements: [{ tag: 'div', text: { tag: 'lark_md', content: entry.input ? `\`${entry.input}\`` : '—' } }],
+                elements: [{ tag: 'div', text: { tag: 'lark_md', content: formatStepInput(entry.input) } }],
             },
             {
                 tag: 'column',

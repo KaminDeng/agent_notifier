@@ -4,6 +4,7 @@ require('../lib/env-config');
 const fs = require('node:fs');
 const path = require('node:path');
 const { createFeishuClient } = require('../channels/feishu/feishu-client');
+const { resolveFeishuChatId } = require('../channels/feishu/resolve-chat-id');
 const { parseOutputBlock } = require('../adapters/codex/cli-output-parser');
 const { sessionState } = require('../lib/session-state');
 const { parseMarkdownToElements } = require('../lib/feishu-card-utils');
@@ -273,13 +274,12 @@ class CodexWatcher {
     constructor() {
         const appId = process.env.FEISHU_APP_ID;
         const appSecret = process.env.FEISHU_APP_SECRET;
-        const chatId = process.env.FEISHU_CHAT_ID;
 
-        if (!appId || !appSecret || !chatId) {
-            throw new Error('需要 FEISHU_APP_ID / FEISHU_APP_SECRET / FEISHU_CHAT_ID');
+        if (!appId || !appSecret) {
+            throw new Error('需要 FEISHU_APP_ID / FEISHU_APP_SECRET');
         }
 
-        this.chatId = chatId;
+        this.chatId = String(process.env.FEISHU_CHAT_ID || '').trim();
         this.client = createFeishuClient({ appId, appSecret });
         this.offsets = new Map();
         this.mtimes = new Map();
@@ -288,6 +288,15 @@ class CodexWatcher {
         this.timer = null;
         this._finalCardTimers = new Map();
         this._codexPtsSet = new Set();
+    }
+
+    async ensureChatId() {
+        if (this.chatId) return this.chatId;
+        this.chatId = await resolveFeishuChatId({
+            preferredChatId: process.env.FEISHU_CHAT_ID,
+            larkClient: this.client.client,
+        });
+        return this.chatId;
     }
 
     /** 扫描 /proc 找出运行 codex 的 pts 编号 */
@@ -333,7 +342,9 @@ class CodexWatcher {
             this._finalCardTimers.delete(ptsNum);
             try {
                 const finalCard = buildExecutionSummaryCard(summaryData, ptsDevice, stateKey);
-                const resp = await this.client.sendCard({ chatId: this.chatId, card: finalCard });
+                const chatId = await this.ensureChatId();
+                if (!chatId) return;
+                const resp = await this.client.sendCard({ chatId, card: finalCard });
                 const messageId = resp?.data?.message_id || null;
                 const summaryStateKey = `codex_summary_msg_${ptsNum}`;
                 sessionState.load();
@@ -357,6 +368,11 @@ class CodexWatcher {
     }
 
     async start() {
+        const chatId = await this.ensureChatId();
+        if (!chatId) {
+            throw new Error('需要 FEISHU_CHAT_ID（或应用可读取到至少一个 chat）');
+        }
+
         // 检测当前哪些 pts 运行着 Codex 进程
         this._refreshCodexPtsSet();
         this._codexPtsRefreshTimer = setInterval(() => this._refreshCodexPtsSet(), 30000);
@@ -452,7 +468,9 @@ class CodexWatcher {
         });
 
         const card = buildCard(parsed, ptsDevice, stateKey);
-        await this.client.sendCard({ chatId: this.chatId, card });
+        const chatId = await this.ensureChatId();
+        if (!chatId) return;
+        await this.client.sendCard({ chatId, card });
         console.log(`[codex-watcher] 已发送 ${parsed.kind} 卡片 -> ${ptsDevice}`);
         return;
     }
@@ -512,7 +530,9 @@ class CodexWatcher {
             }
         }
 
-        const resp = await this.client.sendCard({ chatId: this.chatId, card });
+        const chatId = await this.ensureChatId();
+        if (!chatId) return;
+        const resp = await this.client.sendCard({ chatId, card });
         const messageId = resp?.data?.message_id || null;
         sessionState.load();
         const stateEntry = sessionState.data[stateKey] || {};
